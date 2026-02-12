@@ -63,3 +63,6 @@ temp/
 
 # Backup files
 *.backup
+
+# FIT cache (avoid re-downloading)
+.cache/

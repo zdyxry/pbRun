@@ -14,6 +14,9 @@ const GarminFITParser = require('./fit-parser');
 const VDOTCalculator = require('./vdot-calculator');
 const DatabaseManager = require('./db-manager');
 
+/** FIT 缓存目录，避免重复拉取 */
+const FIT_CACHE_DIR = path.join(process.cwd(), '.cache', 'fit');
+
 /** Garmin returns ZIP containing .fit; detect and extract. */
 function isZip(buffer) {
   const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
@@ -82,6 +85,9 @@ class GarminSync {
       log('║        Garmin 数据同步                                 ║', 'blue');
       log('║        Starting Garmin Data Synchronization           ║', 'blue');
       log('╚═══════════════════════════════════════════════════════╝\n', 'blue');
+
+      // Ensure FIT cache directory exists
+      await fs.mkdir(FIT_CACHE_DIR, { recursive: true });
 
       // Check authentication
       log('检查 Garmin 认证...', 'cyan');
@@ -189,11 +195,24 @@ class GarminSync {
     const activityId = activityMeta.activityId;
     const activityName = activityMeta.activityName || 'Unknown';
 
-    // Download FIT file (Garmin often returns ZIP containing the .fit)
-    let fitData = await this.client.downloadFitFile(activityId);
-    if (!fitData) {
+    // 优先从 .cache/fit 读取，避免重复拉取
+    const cachePath = path.join(FIT_CACHE_DIR, String(activityId));
+    let rawData = null;
+    try {
+      rawData = await fs.readFile(cachePath);
+    } catch {
+      // 缓存未命中，从 Garmin 下载
+      rawData = await this.client.downloadFitFile(activityId);
+      if (rawData) {
+        await fs.writeFile(cachePath, Buffer.isBuffer(rawData) ? rawData : Buffer.from(rawData));
+      }
+    }
+    if (!rawData) {
       return false;
     }
+
+    // Garmin 可能返回 ZIP 或裸 FIT，统一处理
+    let fitData = rawData;
     if (isZip(fitData)) {
       const extracted = await extractFitFromZip(fitData);
       if (!extracted) return false;

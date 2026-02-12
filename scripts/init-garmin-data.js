@@ -122,6 +122,7 @@ async function runSync() {
   logSection('开始数据同步');
 
   log('正在同步 Garmin 数据...', 'cyan');
+  log('FIT 文件将缓存到 .cache/fit，重复运行时会优先使用缓存', 'cyan');
   log('这可能需要几分钟，取决于你的活动数量\n', 'yellow');
 
   try {
