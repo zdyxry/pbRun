@@ -1,8 +1,10 @@
 /**
  * SQLite database access layer using better-sqlite3.
+ * Vercel 部署：需将 data/activities.db 纳入仓库或在构建时注入，并保留 data 目录（已含 data/.gitkeep）。
  */
 
 import Database from 'better-sqlite3';
+import fs from 'fs';
 import path from 'path';
 import {
   Activity,
@@ -23,7 +25,16 @@ let db: Database.Database | null = null;
 
 function getDatabase(): Database.Database {
   if (!db) {
-    const dbPath = path.join(process.cwd(), 'data', 'activities.db');
+    const dbPath =
+      process.env.DB_PATH || path.join(process.cwd(), 'data', 'activities.db');
+
+    if (!fs.existsSync(dbPath)) {
+      throw new Error(
+        `Database file not found: ${dbPath}. ` +
+          'For Vercel deployment: add data/activities.db to the repo (e.g. allow in .gitignore) or set DB_PATH to a path that exists.'
+      );
+    }
+
     db = new Database(dbPath, { readonly: true });
   }
   return db;
