@@ -1,5 +1,5 @@
 /**
- * TypeScript type definitions for Garmin activities data.
+ * Garmin 活动数据的 TypeScript 类型定义。
  */
 
 export interface Activity {
@@ -7,6 +7,8 @@ export interface Activity {
   activity_id: number;                           // 活动ID（主键）
   name: string;                                  // 活动名称
   activity_type: string;                         // 活动类型（默认：跑步）
+  sport_type?: string;                           // 运动主类型（FIT sport，如跑步、健身器械）
+  sub_sport_type?: string;                       // 运动子类型（FIT sub_sport，如跑步机、路跑、越野）
   start_time: string;                            // 开始时间（UTC）
   start_time_local: string;                      // 开始时间（本地时区）
 

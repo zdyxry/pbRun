@@ -63,6 +63,16 @@ class GarminFITParser {
       elapsed_time: this._safeGetInt(session, 'total_elapsed_time'),
     };
 
+    // FIT Session: sport / sub_sport（区分跑步机、户外等）
+    const sport = session.sport;
+    const subSport = session.sub_sport;
+    if (sport != null && sport !== undefined && String(sport).trim() !== '') {
+      activityData.sport_type = String(sport);
+    }
+    if (subSport != null && subSport !== undefined && String(subSport).trim() !== '') {
+      activityData.sub_sport_type = String(subSport);
+    }
+
     // Calculate pace and speed (fit-file-parser with lengthUnit 'km' gives distance in km)
     const distance = activityData.distance;
     const duration = activityData.duration;

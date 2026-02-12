@@ -28,6 +28,8 @@ class DatabaseManager {
         activity_id INTEGER PRIMARY KEY,              -- 活动ID（主键）
         name TEXT NOT NULL,                           -- 活动名称
         activity_type TEXT DEFAULT 'running',         -- 活动类型（默认：跑步）
+        sport_type TEXT,                              -- 运动主类型（FIT sport，如跑步、健身器械）
+        sub_sport_type TEXT,                          -- 运动子类型（FIT sub_sport，如跑步机、路跑、越野）
         start_time DATETIME NOT NULL,                 -- 开始时间（UTC）
         start_time_local DATETIME NOT NULL,           -- 开始时间（本地时区）
 
@@ -94,6 +96,18 @@ class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_activities_vdot
       ON activities(vdot_value)
     `);
+
+    // 为已存在的数据库添加新列（兼容旧库）
+    try {
+      this.db.exec('ALTER TABLE activities ADD COLUMN sport_type TEXT');
+    } catch (e) {
+      if (!/duplicate column name/i.test(e.message)) throw e;
+    }
+    try {
+      this.db.exec('ALTER TABLE activities ADD COLUMN sub_sport_type TEXT');
+    } catch (e) {
+      if (!/duplicate column name/i.test(e.message)) throw e;
+    }
 
     // Create activity_laps table
     this.db.exec(`
