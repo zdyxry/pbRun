@@ -26,47 +26,64 @@ class VDOTCalculator {
 
   /**
    * Calculate VDOT using Daniels Running Formula
+   *
+   * Based on Jack Daniels' "Daniels' Running Formula"
+   * @param {number} distanceMeters - Distance in meters
+   * @param {number} durationSeconds - Duration in seconds
+   * @param {number} avgHr - Average heart rate (optional)
+   * @returns {number|null} VDOT value
    */
   calculateVdotFromPace(distanceMeters, durationSeconds, avgHr = null) {
     if (durationSeconds <= 0 || distanceMeters <= 0) {
       return null;
     }
 
-    // Convert to km and hours
-    const distanceKm = distanceMeters / 1000;
-    const durationHours = durationSeconds / 3600;
+    // Convert to minutes
+    const durationMinutes = durationSeconds / 60;
 
-    // Velocity in km/h
-    const velocity = distanceKm / durationHours;
+    // Velocity in m/min (required by Daniels formula)
+    const velocityMPerMin = distanceMeters / durationMinutes;
 
-    if (velocity <= 0) return null;
+    if (velocityMPerMin <= 0) return null;
 
-    // Calculate VO2max using Daniels formula
-    const vo2max = -4.60 + 0.182258 * velocity + 0.000104 * (velocity ** 2);
+    // Calculate VO2 using Daniels formula (velocity in m/min)
+    // VO2 = -4.60 + 0.182258 * v + 0.000104 * v²
+    const vo2 = -4.60 + 0.182258 * velocityMPerMin + 0.000104 * (velocityMPerMin ** 2);
 
-    // Calculate percent of VO2max based on distance
-    const percentVo2max = 1 - Math.exp(-0.012 * (distanceKm / velocity));
+    // Calculate percent of VO2max based on duration (standard Daniels formula)
+    // %VO2max = 0.8 + 0.1894393 * e^(-0.012778*t) + 0.2989558 * e^(-0.1932605*t)
+    const t = durationMinutes;
+    const percentVo2max = 0.8
+                        + 0.1894393 * Math.exp(-0.012778 * t)
+                        + 0.2989558 * Math.exp(-0.1932605 * t);
 
-    if (percentVo2max <= 0) return null;
+    // Sanity check
+    if (percentVo2max <= 0 || percentVo2max > 1.0) return null;
 
     // Calculate base VDOT
-    let vdot = vo2max / percentVo2max;
+    let vdot = vo2 / percentVo2max;
 
-    // Adjust VDOT based on heart rate zone if available
+    // Optional: Adjust VDOT based on heart rate zone
+    // This accounts for efficiency differences (lower HR at same pace = better fitness)
     if (avgHr && avgHr > 0) {
       const hrZone = this.getHrZone(avgHr);
 
-      // Zone multipliers (higher zones indicate better fitness)
+      // Conservative multipliers based on HR efficiency
       const zoneMultipliers = {
-        1: 0.90,  // Easy run - lower intensity
-        2: 0.95,  // Aerobic base
+        1: 0.97,  // Easy run - may indicate overtraining or inefficiency if too many easy runs
+        2: 0.99,  // Aerobic base - good aerobic fitness
         3: 1.00,  // Tempo run - baseline
-        4: 1.05,  // Lactate threshold - higher quality
-        5: 1.10   // VO2max - highest quality
+        4: 1.00,  // Lactate threshold - expected for this pace
+        5: 1.00   // VO2max - expected for hard efforts
       };
 
       const multiplier = zoneMultipliers[hrZone] || 1.0;
       vdot *= multiplier;
+    }
+
+    // Sanity check: VDOT typically ranges from 30-85 for most runners
+    if (vdot < 20 || vdot > 100) {
+      return null;
     }
 
     return Math.round(vdot * 10) / 10;
