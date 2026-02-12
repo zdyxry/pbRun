@@ -50,13 +50,6 @@ __pycache__/
 .Python
 pip-log.txt
 
-# Database（Vercel 部署需将 data/activities.db 纳入仓库时，可取消下一行注释）
-# data/*.db
-# !data/activities.db
-data/*.db-journal
-data/*.db-wal
-data/*.db-shm
-
 # Temporary FIT files
 *.fit
 tmp/
