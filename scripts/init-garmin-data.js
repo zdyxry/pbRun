@@ -78,12 +78,35 @@ function checkDatabaseExists() {
   return fs.existsSync(dbPath);
 }
 
-/** 清空 activities 与 activity_laps 两个表的数据，保留文件与表结构 */
+/** 清空所有业务数据表（含 activity_records、hr_zone_stats_cache、vdot_trend_cache），保留文件与表结构 */
 function clearDatabaseData(dbPath) {
   const db = new Database(dbPath);
   try {
+    // 确保缓存表存在（兼容从未运行 preprocess 的库），再清空
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS hr_zone_stats_cache (
+        period TEXT NOT NULL, period_type TEXT NOT NULL, hr_zone INTEGER NOT NULL,
+        activity_count INTEGER, total_duration REAL, total_distance REAL,
+        avg_pace REAL, avg_cadence REAL, avg_stride_length REAL, avg_heart_rate REAL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (period, period_type, hr_zone)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS vdot_trend_cache (
+        period TEXT NOT NULL, period_type TEXT NOT NULL,
+        avg_vdot REAL, max_vdot REAL, min_vdot REAL,
+        activity_count INTEGER, total_distance REAL, total_duration REAL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (period, period_type)
+      )
+    `);
+    // 顺序：先删有外键依赖的，再删主表，最后清缓存表
+    db.exec('DELETE FROM activity_records');
     db.exec('DELETE FROM activity_laps');
     db.exec('DELETE FROM activities');
+    db.exec('DELETE FROM hr_zone_stats_cache');
+    db.exec('DELETE FROM vdot_trend_cache');
   } finally {
     db.close();
   }
@@ -118,7 +141,7 @@ async function handleExistingDatabase() {
     if (shouldClear) {
       const dbPath = path.join(process.cwd(), 'app', 'data', 'activities.db');
       clearDatabaseData(dbPath);
-      log('\n✓ 数据库内容已清空（保留 app/data/activities.db）', 'green');
+      log('\n✓ 所有数据已清空（activities / activity_laps / activity_records / hr_zone_stats_cache / vdot_trend_cache）', 'green');
       return 'full';
     } else {
       log('\n✓ 保留现有数据，将进行增量同步', 'green');
@@ -158,6 +181,23 @@ async function runSync() {
     log(`\n✗ 数据同步失败: ${error.message}`, 'red');
     throw error;
   }
+}
+
+/** 同步完成后重建 laps 衍生的 hr_zone、vdot_trend 缓存 */
+function runPreprocessStatsCache() {
+  return new Promise((resolve, reject) => {
+    const scriptPath = path.join(process.cwd(), 'scripts', 'preprocess-stats-cache.js');
+    const child = spawn(process.execPath, [scriptPath, '--mode', 'full', '--clear'], {
+      stdio: 'inherit',
+      cwd: process.cwd(),
+      env: process.env
+    });
+    child.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`preprocess-stats-cache 退出码: ${code}`));
+    });
+    child.on('error', reject);
+  });
 }
 
 function showDatabaseStats() {
@@ -238,13 +278,19 @@ async function main() {
       process.exit(0);
     }
 
-    // Step 4: Run sync (JavaScript)
+    // Step 4: Run sync (JavaScript) — 含 activities、activity_laps、activity_records
     await runSync();
 
-    // Step 5: Show database stats
+    // Step 5: 重建 hr_zone_stats_cache、vdot_trend_cache（依赖 laps 与 activities）
+    logSection('更新统计缓存');
+    log('正在重建心率区间与 VDOT 趋势缓存 (laps / hr_zone / vdot_trend)...', 'cyan');
+    await runPreprocessStatsCache();
+    log('✓ 统计缓存更新完成\n', 'green');
+
+    // Step 6: Show database stats
     showDatabaseStats();
 
-    // Step 6: Show next steps
+    // Step 7: Show next steps
     showNextSteps();
 
     process.exit(0);

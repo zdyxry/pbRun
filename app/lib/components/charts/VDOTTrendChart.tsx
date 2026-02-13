@@ -30,6 +30,18 @@ export default function VDOTTrendChart({ data, groupBy }: VDOTTrendChartProps) {
     const option: echarts.EChartsOption = {
       tooltip: {
         trigger: 'axis',
+        confine: true,
+        appendToBody: false,
+        position: (point, _params, dom, rect, size) => {
+          const [tw, th] = size.contentSize;
+          const padding = 10;
+          let x = point[0];
+          let y = point[1] - th - 12;
+          if (y < rect.y + padding) y = point[1] + 12;
+          if (x + tw > rect.x + rect.width - padding) x = rect.x + rect.width - tw - padding;
+          if (x < rect.x + padding) x = rect.x + padding;
+          return [x, y];
+        },
         formatter: (params: unknown) => {
           const p = Array.isArray(params) ? params[0] : null;
           if (!p) return '';
@@ -101,5 +113,10 @@ export default function VDOTTrendChart({ data, groupBy }: VDOTTrendChartProps) {
     };
   }, []);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '200px' }} />;
+  return (
+    <div
+      ref={chartRef}
+      style={{ width: '100%', height: '200px', position: 'relative', zIndex: 0 }}
+    />
+  );
 }

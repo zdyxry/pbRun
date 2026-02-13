@@ -10,7 +10,7 @@ const navItems = [
 ] as const;
 
 function isActive(href: string, pathname: string): boolean {
-  if (href === '/list') return pathname === '/list';
+  if (href === '/list') return pathname === '/list' || pathname.startsWith('/pages/');
   if (href === '/analysis') return pathname.startsWith('/analysis');
   if (href === '/stats') return pathname.startsWith('/stats');
   return pathname === href;

@@ -41,14 +41,14 @@ export default function PaceZoneMetricsTable({ data }: PaceZoneMetricsTableProps
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <table className="w-full min-w-[260px] text-left text-sm border-collapse">
+    <div className="overflow-x-auto rounded-xl bg-white dark:bg-zinc-900">
+      <table className="w-full min-w-[260px] text-sm border-collapse">
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-700">
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">配速区间</th>
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">心率</th>
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">步幅</th>
+            <th className="w-36 min-w-[9rem] px-3 py-2.5 text-left font-medium text-zinc-800 dark:text-zinc-200">配速区间</th>
+            <th className="px-3 py-2.5 text-center font-medium text-zinc-800 dark:text-zinc-200">心率</th>
+            <th className="px-3 py-2.5 text-center font-medium text-zinc-800 dark:text-zinc-200">步频</th>
+            <th className="px-3 py-2.5 text-right font-medium text-zinc-800 dark:text-zinc-200">步幅</th>
           </tr>
         </thead>
         <tbody>
@@ -57,17 +57,29 @@ export default function PaceZoneMetricsTable({ data }: PaceZoneMetricsTableProps
               key={row.zone}
               className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
             >
-              <td className="px-1.5 py-1.5">
-                <span className={`inline-block rounded px-1 py-0.5 ${PACE_ZONE_COLORS[row.zone]}`}>
-                  <span className="block leading-tight">{PACE_ZONE_NAMES[row.zone]}</span>
-                  <span className="block text-xs opacity-90 leading-tight">
-                    {formatPaceRange(row.pace_min_sec_per_km, row.pace_max_sec_per_km)} /km
+              <td className="w-36 min-w-[9rem] px-3 py-2">
+                <span className={`block w-full rounded px-1.5 py-0.5 ${PACE_ZONE_COLORS[row.zone]}`}>
+                  <span className="block leading-tight font-medium text-zinc-800 dark:text-zinc-200">{PACE_ZONE_NAMES[row.zone]}</span>
+                  <span className="block text-xs leading-tight text-zinc-600 dark:text-zinc-400">
+                    {formatPaceRange(row.pace_min_sec_per_km, row.pace_max_sec_per_km)}
+                    <span className="text-[11px] text-zinc-500 dark:text-zinc-500"> /km</span>
                   </span>
                 </span>
               </td>
-              <td className="px-1.5 py-1.5">{row.avg_heart_rate != null ? Math.round(row.avg_heart_rate) : '--'}</td>
-              <td className="px-1.5 py-1.5">{row.avg_cadence !== null ? row.avg_cadence.toFixed(0) : '--'}</td>
-              <td className="px-1.5 py-1.5">{row.avg_stride_length !== null ? row.avg_stride_length.toFixed(2) + ' m' : '--'}</td>
+              <td className="px-3 py-2 text-center tabular-nums text-zinc-800 dark:text-zinc-200">
+                {row.avg_heart_rate != null ? Math.round(row.avg_heart_rate) : '--'}
+              </td>
+              <td className="px-3 py-2 text-center tabular-nums text-zinc-800 dark:text-zinc-200">
+                {row.avg_cadence != null ? row.avg_cadence.toFixed(0) : '--'}
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {row.avg_stride_length != null ? (
+                  <>
+                    {row.avg_stride_length.toFixed(2)}
+                    <span className="ml-0.5 text-xs text-zinc-500 dark:text-zinc-400">m</span>
+                  </>
+                ) : '--'}
+              </td>
             </tr>
           ))}
         </tbody>

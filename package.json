@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "init:data": "node scripts/init-garmin-data.js"
+    "init:data": "DEBUG_GARMIN_LIST=1 node scripts/init-garmin-data.js"
   },
   "dependencies": {
     "@zip.js/zip.js": "^2.8.19",

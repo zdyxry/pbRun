@@ -118,21 +118,21 @@ export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }
 
   if (rows.length === 0) {
     return (
-      <div className="text-center py-8 text-zinc-500">
+      <div className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
         暂无数据
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <table className="w-full min-w-[260px] text-left text-sm border-collapse">
+    <div className="overflow-x-auto rounded-xl bg-white dark:bg-zinc-900">
+      <table className="w-full min-w-[260px] text-sm border-collapse">
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-700">
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">心率区间</th>
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">配速</th>
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
-            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">步幅</th>
+            <th className="w-36 min-w-[9rem] px-3 py-2.5 text-left font-medium text-zinc-800 dark:text-zinc-200">心率区间</th>
+            <th className="px-3 py-2.5 text-center font-medium text-zinc-800 dark:text-zinc-200">配速</th>
+            <th className="px-3 py-2.5 text-center font-medium text-zinc-800 dark:text-zinc-200">步频</th>
+            <th className="px-3 py-2.5 text-right font-medium text-zinc-800 dark:text-zinc-200">步幅</th>
           </tr>
         </thead>
         <tbody>
@@ -147,15 +147,31 @@ export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }
                 onClick={href ? () => router.push(href) : undefined}
                 onKeyDown={href ? (e) => e.key === 'Enter' && router.push(href) : undefined}
               >
-                <td className="px-1.5 py-1.5">
-                  <span className={`inline-block rounded px-1 py-0.5 ${HR_ZONE_COLORS[row.zone]}`}>
-                    <span className="block leading-tight">{row.name}</span>
-                    <span className="block text-xs opacity-90 leading-tight">{row.rangeBpm}</span>
+                <td className="w-36 min-w-[9rem] px-3 py-2">
+                  <span className={`block w-full rounded px-1.5 py-0.5 ${HR_ZONE_COLORS[row.zone]}`}>
+                    <span className="block leading-tight font-medium text-zinc-800 dark:text-zinc-200">{row.name}</span>
+                    <span className="block text-xs leading-tight text-zinc-600 dark:text-zinc-400">{row.rangeBpm}</span>
                   </span>
                 </td>
-                <td className="px-1.5 py-1.5">{row.avg_pace !== null ? formatPace(row.avg_pace) : '--'}</td>
-                <td className="px-1.5 py-1.5">{row.avg_cadence !== null ? row.avg_cadence.toFixed(0) : '--'}</td>
-                <td className="px-1.5 py-1.5">{row.avg_stride !== null ? row.avg_stride.toFixed(2) + ' m' : '--'}</td>
+                <td className="px-3 py-2 text-center tabular-nums">
+                  {row.avg_pace != null ? (
+                    <>
+                      {formatPace(row.avg_pace, false)}
+                      <span className="ml-0.5 text-xs text-zinc-500 dark:text-zinc-400">/km</span>
+                    </>
+                  ) : '--'}
+                </td>
+                <td className="px-3 py-2 text-center tabular-nums text-zinc-800 dark:text-zinc-200">
+                  {row.avg_cadence != null ? row.avg_cadence.toFixed(0) : '--'}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {row.avg_stride != null ? (
+                    <>
+                      {row.avg_stride.toFixed(2)}
+                      <span className="ml-0.5 text-xs text-zinc-500 dark:text-zinc-400">m</span>
+                    </>
+                  ) : '--'}
+                </td>
               </tr>
             );
           })}

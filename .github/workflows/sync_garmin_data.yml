@@ -43,6 +43,13 @@ jobs:
         run: |
           node scripts/sync-garmin.js
 
+      - name: Update stats cache (hr_zone, vdot_trend)
+        env:
+          MAX_HR: ${{ secrets.MAX_HR }}
+          RESTING_HR: ${{ secrets.RESTING_HR }}
+        run: |
+          node scripts/preprocess-stats-cache.js --mode full --clear
+
       - name: Show sync results
         if: always()
         run: |

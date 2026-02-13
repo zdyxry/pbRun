@@ -1,5 +1,6 @@
 /**
  * GET /api/analysis/hr-zones
+ * 按心率区间统计（以心率为准），按周或月聚合。
  * Get heart rate zone statistics grouped by week or month.
  */
 

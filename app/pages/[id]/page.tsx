@@ -5,13 +5,11 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   formatPace,
-  formatDistance,
   formatDistanceFromMeters,
   formatDuration,
   formatDateTime,
   formatCadence,
   formatInt,
-  formatTemp,
 } from '@/app/lib/format';
 import type { Activity, ActivityLap, ActivityRecord } from '@/app/lib/types';
 import ActivityTrendCharts from '@/app/lib/components/charts/ActivityTrendCharts';
@@ -86,63 +84,113 @@ export default function ActivityDetailPage() {
           href="/list"
           className="text-blue-600 hover:underline dark:text-blue-400"
         >
-          返回活动列表
+          返回运动记录
         </Link>
       </div>
     );
   }
 
-  const statCards = [
-    { label: '开始时间', value: formatDateTime(activity.start_time_local ?? activity.start_time) },
-    { label: '距离', value: formatDistance(activity.distance) },
-    { label: '时长', value: formatDuration(activity.moving_time ?? activity.duration) },
-    { label: '平均配速', value: formatPace(activity.average_pace) },
-    { label: '平均心率', value: formatInt(activity.average_heart_rate, 'bpm') },
-    { label: '平均步频', value: formatCadence(activity.average_cadence) },
-    { label: '平均步幅', value: activity.average_stride_length != null ? `${(activity.average_stride_length * 100).toFixed(0)} cm` : '--' },
-    { label: '垂直步幅比', value: activity.average_vertical_ratio != null ? `${activity.average_vertical_ratio.toFixed(1)} %` : '--' },
-    { label: '平均触地时间', value: activity.average_ground_contact_time != null ? `${activity.average_ground_contact_time} ms` : '--' },
-    { label: '垂直摆动', value: activity.average_vertical_oscillation != null ? `${activity.average_vertical_oscillation.toFixed(1)} cm` : '--' },
-    { label: '平均温度', value: formatTemp(activity.average_temperature) },
-    { label: 'VDOT', value: activity.vdot_value != null ? activity.vdot_value.toFixed(1) : '--' },
+  const durationSec = activity.moving_time ?? activity.duration ?? 0;
+  const durationMinutes = durationSec / 60;
+  // 距离：若数值小于 100 视为已是公里；否则按米转公里
+  const rawDistance = activity.distance ?? 0;
+  const distanceKm =
+    rawDistance > 0 && rawDistance < 100 ? rawDistance : rawDistance / 1000;
+
+  const overviewItems: { value: string; unit?: string; label: string }[] = [
+    {
+      value: activity.vdot_value != null ? activity.vdot_value.toFixed(1) : '--',
+      label: '当前跑力',
+    },
+    {
+      value:
+        distanceKm > 0
+          ? (distanceKm % 1 === 0 ? String(distanceKm) : distanceKm.toFixed(2))
+          : '--',
+      unit: distanceKm > 0 ? '公里' : undefined,
+      label: '距离',
+    },
+    {
+      value: activity.average_pace != null ? formatPace(activity.average_pace, false) : '--',
+      unit: activity.average_pace != null ? '/km' : undefined,
+      label: '平均配速',
+    },
+    {
+      value: activity.training_load != null ? activity.training_load.toFixed(1) : '--',
+      label: '训练负荷',
+    },
+    {
+      value:
+        durationMinutes > 0
+          ? (durationMinutes % 1 === 0 ? String(Math.round(durationMinutes)) : durationMinutes.toFixed(1))
+          : '--',
+      unit: durationMinutes > 0 ? '分钟' : undefined,
+      label: '总时长',
+    },
+    {
+      value: activity.average_heart_rate != null ? String(activity.average_heart_rate) : '--',
+      unit: activity.average_heart_rate != null ? 'bpm' : undefined,
+      label: '平均心率',
+    },
+    {
+      value:
+        activity.total_ascent != null
+          ? String(activity.total_ascent)
+          : '0',
+      unit: '米',
+      label: '累计爬升',
+    },
+    {
+      value: activity.average_cadence != null ? String(activity.average_cadence) : '--',
+      unit: activity.average_cadence != null ? '步/分' : undefined,
+      label: '平均步频',
+    },
+    {
+      value:
+        activity.average_stride_length != null
+          ? activity.average_stride_length.toFixed(2)
+          : '--',
+      unit: activity.average_stride_length != null ? '米' : undefined,
+      label: '平均步幅',
+    },
   ];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/list" className="hover:underline">活动列表</Link>
-          <span>/</span>
-          <span>活动 #{activity.activity_id}</span>
-        </div>
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
           {activity.name || `跑步 ${formatDateTime(activity.start_time_local ?? activity.start_time)}`}
+          <span className="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+            #{activity.activity_id}
+          </span>
         </h1>
       </div>
 
-      {/* 概览 - 卡片区块 */}
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
-          概览
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {statCards.map(({ label, value }) => (
-            <div key={label} className="rounded-lg bg-zinc-50 py-2.5 px-3 dark:bg-zinc-800/50">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
-              <div className="mt-0.5 font-medium text-zinc-900 dark:text-zinc-100">{value}</div>
+      {/* 概览 - 3x3 网格，与整页配色一致 */}
+      <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="grid grid-cols-3 gap-3">
+          {overviewItems.map(({ value, unit, label }) => (
+            <div
+              key={label}
+              className="flex flex-col items-center justify-center py-2 text-center"
+            >
+              <div className="flex flex-wrap items-baseline justify-center gap-0.5">
+                <span className="text-lg font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">
+                  {value}
+                </span>
+                {unit != null && (
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    {unit}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">{label}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {records.length > 0 ? (
-        <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
-            心率 / 步频 / 步幅趋势
-          </h2>
-          <ActivityTrendCharts records={records} hideTitle />
-        </section>
-      ) : null}
+      {records.length > 0 ? <ActivityTrendCharts records={records} /> : null}
 
       {activity.average_gct_balance != null ? (
         <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

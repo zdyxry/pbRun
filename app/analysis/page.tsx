@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import VDOTTrendChart from '@/app/lib/components/charts/VDOTTrendChart';
+import HrZoneDurationBarChart from '@/app/lib/components/charts/HrZoneDurationBarChart';
 import HrZoneMetricsTable from '@/app/lib/components/charts/HrZoneMetricsTable';
 import PaceZoneMetricsTable from '@/app/lib/components/charts/PaceZoneMetricsTable';
 import type { HrZoneStat, VDOTTrendPoint, PaceZoneStat } from '@/app/lib/types';
@@ -32,6 +33,41 @@ export default function AnalysisPage() {
   const [error, setError] = useState<string | null>(null);
 
   const { startDate, endDate } = useMemo(() => getDateRangeFromDays(timeRangeDays), [timeRangeDays]);
+
+  /** 按心率区间聚合的跑步时长（来自 hr-zones 接口，以心率为准） */
+  const hrZoneDurationByZone = useMemo(() => {
+    const byZone: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    hrZoneData.forEach((item) => {
+      byZone[item.hr_zone] = (byZone[item.hr_zone] ?? 0) + item.total_duration;
+    });
+    return [1, 2, 3, 4, 5].map((zone) => ({ zone, total_duration: byZone[zone] ?? 0 }));
+  }, [hrZoneData]);
+
+  /** 基于周训练量比例（以心率为准），相对丹尼尔斯建议的明显超标/不足 */
+  const hrZoneOverflow = useMemo(() => {
+    if (!hrZoneDurationByZone.length) return [];
+    const totalSec = hrZoneDurationByZone.reduce((s, z) => s + z.total_duration, 0);
+    if (totalSec <= 0) return [];
+    const byZone: Record<number, number> = {};
+    hrZoneDurationByZone.forEach((z) => {
+      byZone[z.zone] = (z.total_duration / totalSec) * 100;
+    });
+    const z12 = (byZone[1] ?? 0) + (byZone[2] ?? 0);
+    const items: { label: string; actual: number; limit: string; type: 'over' | 'under' }[] = [];
+    if (z12 < 70) {
+      items.push({ label: 'Z1–Z2（轻松/有氧）', actual: Math.round(z12 * 10) / 10, limit: '建议 ≥70%', type: 'under' });
+    }
+    if ((byZone[3] ?? 0) > 15) {
+      items.push({ label: 'Z3（节奏/马拉松配速）', actual: Math.round((byZone[3] ?? 0) * 10) / 10, limit: '建议 ≤15%', type: 'over' });
+    }
+    if ((byZone[4] ?? 0) > 10) {
+      items.push({ label: 'Z4（乳酸阈）', actual: Math.round((byZone[4] ?? 0) * 10) / 10, limit: '建议 ≤10%', type: 'over' });
+    }
+    if ((byZone[5] ?? 0) > 8) {
+      items.push({ label: 'Z5（间歇/强度）', actual: Math.round((byZone[5] ?? 0) * 10) / 10, limit: '建议 ≤8%', type: 'over' });
+    }
+    return items;
+  }, [hrZoneDurationByZone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +195,50 @@ export default function AnalysisPage() {
                 暂无跑力趋势数据
               </div>
             )}
+          </section>
+
+          {/* 心率区间跑步时间（数据来自 /api/analysis/hr-zones，以心率为准） */}
+          <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              心率区间跑步时间
+              <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                {startDate} – {endDate}
+              </span>
+            </h2>
+            <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+              本区块数据以心率为准，按心率区间统计跑步时间。
+            </p>
+            {hrZoneData.length > 0 ? (
+              <HrZoneDurationBarChart data={hrZoneDurationByZone} />
+            ) : (
+              <div className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                暂无心率区间数据
+              </div>
+            )}
+            <div className="mt-4 rounded-lg border border-zinc-100 bg-zinc-50/80 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+              <h3 className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">跑步建议（丹尼尔斯跑步法）</h3>
+              <ul className="mb-3 space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+                <li><span className="font-medium">Z1–Z2（轻松/有氧）</span>：约 70–80% — 有氧基础与恢复</li>
+                <li><span className="font-medium">Z3（节奏/马拉松配速）</span>：约 10–15%</li>
+                <li><span className="font-medium">Z4（乳酸阈）</span>：约 10% — 节奏跑、乳酸阈训练</li>
+                <li><span className="font-medium">Z5（间歇/强度）</span>：约 5–8% — VO₂max 与速度</li>
+              </ul>
+              {hrZoneOverflow.length > 0 && (
+                <div className="border-t border-zinc-200 pt-2 dark:border-zinc-600">
+                  <p className="mb-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">明显超标 / 不足</p>
+                  <ul className="space-y-1 text-xs">
+                    {hrZoneOverflow.map((item) => (
+                      <li
+                        key={item.label}
+                        className={item.type === 'over' ? 'text-amber-700 dark:text-amber-400' : 'text-amber-600 dark:text-amber-500'}
+                      >
+                        {item.label}：当前 <span className="font-medium">{item.actual}%</span>，{item.limit}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* 跑力与详细指标（受上方时间范围控制） */}

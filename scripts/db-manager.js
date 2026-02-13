@@ -241,7 +241,7 @@ class DatabaseManager {
       ON activity_laps(activity_id, lap_index)
     `);
 
-    // activity_records: 单条活动内逐条记录（心率/步频/步幅趋势）
+    // activity_records: 单条活动内逐条记录（心率/步频/步幅/配速趋势）
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS activity_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -251,12 +251,50 @@ class DatabaseManager {
         heart_rate INTEGER,
         cadence INTEGER,
         step_length REAL,
+        pace REAL,
         FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE
       )
     `);
+    try {
+      this.db.exec('ALTER TABLE activity_records ADD COLUMN pace REAL');
+    } catch (e) {
+      if (!/duplicate column name/i.test(e.message)) throw e;
+    }
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_records_activity_id
       ON activity_records(activity_id)
+    `);
+
+    // 统计缓存表（由 preprocess-stats-cache.js 写入，前端按周/月查）
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS hr_zone_stats_cache (
+        period TEXT NOT NULL,
+        period_type TEXT NOT NULL,
+        hr_zone INTEGER NOT NULL,
+        activity_count INTEGER NOT NULL,
+        total_duration REAL,
+        total_distance REAL,
+        avg_pace REAL,
+        avg_cadence REAL,
+        avg_stride_length REAL,
+        avg_heart_rate REAL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (period, period_type, hr_zone)
+      )
+    `);
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS vdot_trend_cache (
+        period TEXT NOT NULL,
+        period_type TEXT NOT NULL,
+        avg_vdot REAL,
+        max_vdot REAL,
+        min_vdot REAL,
+        activity_count INTEGER,
+        total_distance REAL,
+        total_duration REAL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (period, period_type)
+      )
     `);
   }
 
@@ -316,7 +354,7 @@ class DatabaseManager {
       return;
     }
 
-    const columns = ['activity_id', 'record_index', 'elapsed_sec', 'heart_rate', 'cadence', 'step_length'];
+    const columns = ['activity_id', 'record_index', 'elapsed_sec', 'heart_rate', 'cadence', 'step_length', 'pace'];
     const placeholders = columns.map(() => '?').join(', ');
     const insertStmt = this.db.prepare(`
       INSERT INTO activity_records (${columns.join(', ')})
@@ -331,7 +369,8 @@ class DatabaseManager {
           row.elapsed_sec,
           row.heart_rate ?? null,
           row.cadence ?? null,
-          row.step_length ?? null
+          row.step_length ?? null,
+          row.pace ?? null
         );
       }
     });

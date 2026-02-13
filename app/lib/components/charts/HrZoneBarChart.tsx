@@ -102,6 +102,8 @@ export default function HrZoneBarChart({ data, metric, groupBy }: HrZoneBarChart
       },
       tooltip: {
         trigger: 'axis',
+        confine: true,
+        appendToBody: false,
         axisPointer: {
           type: 'shadow',
         },
@@ -163,5 +165,5 @@ export default function HrZoneBarChart({ data, metric, groupBy }: HrZoneBarChart
     };
   }, []);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '400px' }} />;
+  return <div ref={chartRef} style={{ width: '100%', height: '400px', position: 'relative', zIndex: 0 }} />;
 }

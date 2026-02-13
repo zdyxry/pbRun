@@ -151,15 +151,16 @@ export interface ActivityLap {
   average_temperature?: number;                  // 平均温度（摄氏度）
 }
 
-/** 单条活动内逐条记录（用于心率/步频/步幅趋势图） */
+/** 单条活动内逐条记录（用于心率/步频/步幅/配速趋势图） */
 export interface ActivityRecord {
   id?: number;
   activity_id: number;
   record_index: number;
   elapsed_sec: number;                            // 相对活动开始的秒数
   heart_rate?: number | null;                     // 心率（bpm）
-  cadence?: number | null;                       // 步频（步/分钟）
-  step_length?: number | null;                   // 步幅（米）
+  cadence?: number | null;                        // 步频（步/分钟）
+  step_length?: number | null;                    // 步幅（米）
+  pace?: number | null;                           // 配速（秒/公里），由步频与步幅推导或同步时写入
 }
 
 export interface ActivityQueryParams {

@@ -45,6 +45,30 @@ const SUB_SPORT_LABELS = {
   all: '全部',
 };
 
+/** FIT SDK sub_sport 数字枚举顺序（Profile.xlsx），解析器可能返回数字而非字符串 */
+const SUB_SPORT_KEYS_BY_NUM = [
+  'generic', 'treadmill', 'street', 'trail', 'track', 'spin', 'indoor_cycling', 'road', 'mountain', 'downhill',
+  'recumbent', 'cyclocross', 'hand_cycling', 'track_cycling', 'indoor_rowing', 'elliptical', 'stair_climbing',
+  'lap_swimming', 'open_water', 'flexibility_training', 'strength_training', 'warm_up', 'match', 'exercise',
+  'challenge', 'indoor_skiing', 'cardio_training', 'indoor_walking', 'e_bike_fitness', 'bmx', 'casual_walking',
+  'speed_walking', 'bike_to_run_transition', 'run_to_bike_transition', 'swim_to_bike_transition', 'atv', 'motocross',
+  'backcountry', 'resort', 'rc_drone', 'wingsuit', 'whitewater', 'skate_skiing', 'yoga', 'pilates', 'indoor_running',
+  'gravel_cycling', 'e_bike_mountain', 'commuting', 'mixed_surface', 'navigate', 'track_me', 'map',
+  'single_gas_diving', 'multi_gas_diving', 'gauge_diving', 'apnea_diving', 'apnea_hunting', 'virtual_activity',
+  'obstacle', 'all'
+];
+
+/** FIT SDK sport 数字枚举顺序 */
+const SPORT_KEYS_BY_NUM = [
+  'generic', 'running', 'cycling', 'transition', 'fitness_equipment', 'swimming', 'basketball', 'soccer', 'tennis',
+  'american_football', 'training', 'walking', 'cross_country_skiing', 'alpine_skiing', 'snowboarding', 'rowing',
+  'mountaineering', 'hiking', 'multisport', 'paddling', 'flying', 'e_biking', 'motorcycling', 'boating', 'driving',
+  'golf', 'hang_gliding', 'horseback_riding', 'hunting', 'fishing', 'inline_skating', 'rock_climbing', 'sailing',
+  'ice_skating', 'sky_diving', 'snowshoeing', 'snowmobiling', 'stand_up_paddleboarding', 'surfing', 'wakeboarding',
+  'water_skiing', 'kayaking', 'rafting', 'windsurfing', 'kitesurfing', 'tactical', 'jumpmaster', 'boxing',
+  'floor_climbing', 'diving', 'all'
+];
+
 /** FIT sport 枚举 -> 中文展示 */
 const SPORT_LABELS = {
   generic: '通用',
@@ -109,6 +133,8 @@ class GarminFITParser {
     if (sessions.length === 0) return null;
 
     const session = sessions[0];
+    // 部分 FIT 的 sport/sub_sport 在 activity 消息里，优先用 session 再兜底 activity
+    const activityMsg = fitData.activity || {};
 
     const activityData = {
       start_time: this._convertTimestamp(session.start_time),
@@ -119,17 +145,29 @@ class GarminFITParser {
       elapsed_time: this._safeGetInt(session, 'total_elapsed_time'),
     };
 
-    // FIT Session: sport / sub_sport -> 存为中文展示（跑步机、路跑、越野等）
-    const sport = session.sport;
-    const subSport = session.sub_sport;
-    if (sport != null && sport !== undefined && String(sport).trim() !== '') {
-      const sportKey = String(sport).toLowerCase();
-      activityData.sport_type = SPORT_LABELS[sportKey] ?? sportKey;
-    }
-    if (subSport != null && subSport !== undefined && String(subSport).trim() !== '') {
-      const subKey = String(subSport).toLowerCase();
-      activityData.sub_sport_type = SUB_SPORT_LABELS[subKey] ?? subKey;
-    }
+    // FIT Session/Activity: sport / sub_sport -> 存为中文展示（跑步机、路跑、越野等）
+    // 解析器可能返回数字（FIT 枚举值）或字符串，需统一转成 key 再查中文
+    const resolveSport = (val) => {
+      if (val == null || val === undefined) return null;
+      const key = typeof val === 'number'
+        ? (SPORT_KEYS_BY_NUM[val] ?? 'generic')
+        : String(val).toLowerCase().trim();
+      return key ? (SPORT_LABELS[key] ?? key) : null;
+    };
+    const resolveSubSport = (val) => {
+      if (val == null || val === undefined) return null;
+      const key = typeof val === 'number'
+        ? (SUB_SPORT_KEYS_BY_NUM[val] ?? 'generic')
+        : String(val).toLowerCase().trim();
+      return key ? (SUB_SPORT_LABELS[key] ?? key) : null;
+    };
+
+    const sport = session.sport ?? activityMsg.sport;
+    const subSport = session.sub_sport ?? activityMsg.sub_sport;
+    const sportLabel = resolveSport(sport);
+    const subSportLabel = resolveSubSport(subSport);
+    if (sportLabel) activityData.sport_type = sportLabel;
+    if (subSportLabel) activityData.sub_sport_type = subSportLabel;
 
     // Calculate pace and speed (fit-file-parser with lengthUnit 'km' gives distance in km)
     const distance = activityData.distance;
@@ -187,9 +225,11 @@ class GarminFITParser {
     activityData.average_power_to_weight = this._safeGetFloat(session, 'avg_power_to_weight');
     activityData.max_power_to_weight = this._safeGetFloat(session, 'max_power_to_weight');
 
-    // Elevation
-    activityData.total_ascent = this._safeGetFloat(session, 'total_ascent');
-    activityData.total_descent = this._safeGetFloat(session, 'total_descent');
+    // Elevation（FIT 解析器在 lengthUnit: 'km' 时会把海拔也转成 km，需乘 1000 还原为米）
+    const sessionAscent = this._safeGetFloat(session, 'total_ascent');
+    activityData.total_ascent = sessionAscent != null ? sessionAscent * 1000 : undefined;
+    const sessionDescent = this._safeGetFloat(session, 'total_descent');
+    activityData.total_descent = sessionDescent != null ? sessionDescent * 1000 : undefined;
 
     // 坡度（%）
     activityData.avg_grade = this._safeGetFloat(session, 'avg_grade');
@@ -278,9 +318,11 @@ class GarminFITParser {
       lapData.average_heart_rate = this._safeGetInt(lap, 'avg_heart_rate');
       lapData.max_heart_rate = this._safeGetInt(lap, 'max_heart_rate');
 
-      // Elevation
-      lapData.total_ascent = this._safeGetFloat(lap, 'total_ascent');
-      lapData.total_descent = this._safeGetFloat(lap, 'total_descent');
+      // Elevation（解析器 lengthUnit: 'km' 时海拔被转为 km，乘 1000 还原为米）
+      const lapAscent = this._safeGetFloat(lap, 'total_ascent');
+      lapData.total_ascent = lapAscent != null ? lapAscent * 1000 : undefined;
+      const lapDescent = this._safeGetFloat(lap, 'total_descent');
+      lapData.total_descent = lapDescent != null ? lapDescent * 1000 : undefined;
 
       // Power
       lapData.average_power = this._safeGetInt(lap, 'avg_power');
@@ -385,12 +427,20 @@ class GarminFITParser {
       }
 
       if (heartRate != null || cadence != null || stepLength != null) {
+        let pace = null;
+        if (cadence != null && cadence > 0 && stepLength != null && stepLength > 0) {
+          const secPerKm = 60000 / (cadence * stepLength);
+          if (secPerKm >= 180 && secPerKm <= 900) {
+            pace = Math.round(secPerKm * 10) / 10;
+          }
+        }
         records.push({
           record_index: i,
           elapsed_sec: Math.round(elapsedSec * 10) / 10,
           heart_rate: heartRate ?? null,
           cadence: cadence ?? null,
           step_length: stepLength ?? null,
+          pace,
         });
       }
     }

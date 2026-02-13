@@ -67,6 +67,8 @@ export default function HrZonePieChart({ data }: HrZonePieChartProps) {
       },
       tooltip: {
         trigger: 'item',
+        confine: true,
+        appendToBody: false,
         formatter: (params: any) => {
           const hours = (params.value / 3600).toFixed(1);
           return `${params.marker} ${params.name}<br/>时长: ${hours} 小时<br/>占比: ${params.percent}%`;
@@ -127,5 +129,5 @@ export default function HrZonePieChart({ data }: HrZonePieChartProps) {
     };
   }, []);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '350px' }} />;
+  return <div ref={chartRef} style={{ width: '100%', height: '350px', position: 'relative', zIndex: 0 }} />;
 }

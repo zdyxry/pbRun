@@ -49,6 +49,8 @@ export default function ZoneTrendCharts({ seriesData, chartHeight = 320 }: ZoneT
       chart.setOption({
         tooltip: {
           trigger: 'axis',
+          confine: true,
+          appendToBody: false,
           formatter: tooltipFormatter
             ? (params: unknown) => {
                 const p = Array.isArray(params) ? params[0] : null;
@@ -124,15 +126,15 @@ export default function ZoneTrendCharts({ seriesData, chartHeight = 320 }: ZoneT
     <div className="grid gap-8 sm:grid-cols-1 lg:grid-cols-3">
       <div>
         <div className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">配速</div>
-        <div ref={paceRef} style={{ width: '100%', height: `${chartHeight}px` }} />
+        <div ref={paceRef} style={{ width: '100%', height: `${chartHeight}px`, position: 'relative', zIndex: 0 }} />
       </div>
       <div>
         <div className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">步频</div>
-        <div ref={cadenceRef} style={{ width: '100%', height: `${chartHeight}px` }} />
+        <div ref={cadenceRef} style={{ width: '100%', height: `${chartHeight}px`, position: 'relative', zIndex: 0 }} />
       </div>
       <div>
         <div className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">步幅</div>
-        <div ref={strideRef} style={{ width: '100%', height: `${chartHeight}px` }} />
+        <div ref={strideRef} style={{ width: '100%', height: `${chartHeight}px`, position: 'relative', zIndex: 0 }} />
       </div>
     </div>
   );

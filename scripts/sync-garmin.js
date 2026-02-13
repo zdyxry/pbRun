@@ -53,6 +53,83 @@ function log(message, color = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
+/** 从 Garmin API 活动项推断子类型（activityType.display / subTypeKey 等） */
+function inferSubSportFromApi(activityMeta) {
+  const at = activityMeta?.activityType;
+  if (!at) return null;
+  const raw = (at.display ?? at.subTypeKey ?? at.typeKey ?? '').toString().toLowerCase();
+  if (raw.includes('treadmill')) return '跑步机';
+  if (raw.includes('street') || raw.includes('road') || raw.includes('outdoor')) return '路跑';
+  if (raw.includes('trail')) return '越野';
+  if (raw.includes('track')) return '田径场';
+  if (raw.includes('indoor')) return '室内跑步';
+  return null;
+}
+
+/** 从活动名称推断子类型（FIT 常为 generic 时的兜底），返回中文如 跑步机、路跑 */
+function inferSubSportFromName(activityName) {
+  if (!activityName || typeof activityName !== 'string') return null;
+  const name = activityName.toLowerCase();
+  if (name.includes('跑步机') || name.includes('treadmill')) return '跑步机';
+  if (name.includes('路跑') || name.includes('street') || name.includes('户外') || name.includes('outdoor') || name.includes('outside') || (name.includes('run') && name.includes('road'))) return '路跑';
+  if (name.includes('越野') || name.includes('trail')) return '越野';
+  if (name.includes('田径') || name.includes('track')) return '田径场';
+  if (name.includes('室内') || name.includes('indoor run') || name.includes('indoor running')) return '室内跑步';
+  return null;
+}
+
+/**
+ * 从列表/详情 API 的 GPS、海拔、轨迹推断子类型（列表与详情接口均无 subType 时的兜底）
+ * - 有经纬度且（有爬升 或 有轨迹）且 有距离 → 路跑（户外）
+ * - 无有效 GPS 且有距离 → 跑步机（室内，无轨迹）
+ */
+function inferSubSportFromGpsAndElevation(activityMeta) {
+  if (!activityMeta) return null;
+  const lat = activityMeta.startLatitude ?? activityMeta.summaryDTO?.startLatitude;
+  const lon = activityMeta.startLongitude ?? activityMeta.summaryDTO?.startLongitude;
+  const elevGain = activityMeta.elevationGain ?? activityMeta.summaryDTO?.elevationGain ?? 0;
+  const distance = activityMeta.distance ?? activityMeta.summaryDTO?.distance ?? 0;
+  const hasPolyline = activityMeta.hasPolyline === true;
+
+  const hasGps = lat != null && lon != null && Number(lat) !== 0 && Number(lon) !== 0;
+  if (hasGps && (Number(elevGain) > 0 || hasPolyline) && Number(distance) > 0) {
+    return '路跑';
+  }
+  if (!hasGps && Number(distance) > 0) {
+    return '跑步机';
+  }
+  return null;
+}
+
+/** 从 Garmin 活动项得到运动时间文案：年月日 + 时分 + 时长，如 "2026-02-13 16:30 · 45:20" */
+function formatActivityTime(activity) {
+  const durationSec = activity.duration ?? activity.durationInSeconds ?? activity.elapsedDuration;
+  const startRaw = activity.startTimeGMT ?? activity.startTimeGmt ?? activity.beginTimestamp;
+  const parts = [];
+  if (startRaw) {
+    try {
+      const d = new Date(startRaw);
+      if (!Number.isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        parts.push(`${y}-${m}-${day} ${h}:${min}`);
+      }
+    } catch (_) {}
+  }
+  if (durationSec != null && durationSec > 0) {
+    const totalMin = Math.floor(durationSec / 60);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const s = Math.round(durationSec % 60);
+    const durStr = h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+    parts.push(durStr);
+  }
+  return parts.length ? parts.join(' · ') : '';
+}
+
 class GarminSync {
   constructor(options = {}) {
     this.secretString = process.env.GARMIN_SECRET_STRING;
@@ -93,7 +170,10 @@ class GarminSync {
       log('检查 Garmin 认证...', 'cyan');
       const authValid = await this.client.checkAuth();
       if (!authValid) {
-        throw new Error('Garmin authentication failed. Please check your token.');
+        throw new Error(
+          'Garmin authentication failed. Please check your token.\n' +
+          '若 token 已过期，可运行 python scripts/get_garmin_token.py 重新获取并更新 .env 中的 GARMIN_SECRET_STRING。'
+        );
       }
       log('✓ 认证成功\n', 'green');
 
@@ -134,14 +214,22 @@ class GarminSync {
             if (result.success) {
               successCount++;
               const source = result.fromCache ? '缓存' : '远程';
-              log(`${progress} ✓ ${activity.activityName} (${source})`, 'green');
+              const timeStr = formatActivityTime(activity);
+              const timePart = timeStr ? ` ${timeStr}` : '';
+              log(`${progress} ✓ ${activity.activityName}${timePart} (${source})`, 'green');
             } else if (result.skipped && result.reason === 'no_heart_rate') {
-              log(`${progress} ○ ${activity.activityName} - 跳过（无心率）`, 'yellow');
+              const timeStr = formatActivityTime(activity);
+              const timePart = timeStr ? ` ${timeStr} -` : ' -';
+              log(`${progress} ○ ${activity.activityName}${timePart} 跳过（无心率）`, 'yellow');
             } else {
-              log(`${progress} ✗ ${activity.activityName} - 失败`, 'red');
+              const timeStr = formatActivityTime(activity);
+              const timePart = timeStr ? ` ${timeStr} -` : ' -';
+              log(`${progress} ✗ ${activity.activityName}${timePart} 失败`, 'red');
             }
           } catch (error) {
-            log(`${progress} ✗ ${activity.activityName} - ${error.message}`, 'red');
+            const timeStr = formatActivityTime(activity);
+            const timePart = timeStr ? ` ${timeStr} -` : ' -';
+            log(`${progress} ✗ ${activity.activityName}${timePart} ${error.message}`, 'red');
           }
 
           // Small delay to avoid rate limiting
@@ -168,11 +256,31 @@ class GarminSync {
     const allActivities = [];
     const batchSize = 100;
     let start = 0;
+    const debugList = process.env.DEBUG_GARMIN_LIST === '1' || process.env.DEBUG_GARMIN_LIST === 'true';
 
     while (true) {
       const activities = await this.client.getActivities(start, batchSize);
       if (!activities || activities.length === 0) {
         break;
+      }
+
+      // 调试：首次拉取时输出活动列表 API 的原始结构，并请求活动详情看是否有子类型
+      if (debugList && start === 0 && activities.length > 0) {
+        log('\n[DEBUG] Garmin 活动列表 API 本批数量: ' + activities.length, 'cyan');
+        log('[DEBUG] 第一条活动完整内容 (JSON):', 'cyan');
+        console.log(JSON.stringify(activities[0], null, 2));
+        if (activities.length > 1) {
+          log('[DEBUG] 第二条活动（仅键名）: ' + Object.keys(activities[1]).join(', '), 'cyan');
+        }
+        log('[DEBUG] 以上为 getActivities 返回结构，用于确认 sub_sport / activityType 等', 'cyan');
+        try {
+          const detail = await this.client.getActivityDetails(activities[0].activityId);
+          log('[DEBUG] 活动详情接口 getActivityDetails 返回 (第一条):', 'cyan');
+          console.log(JSON.stringify(detail, null, 2));
+        } catch (e) {
+          log('[DEBUG] 活动详情接口请求失败: ' + e.message, 'yellow');
+        }
+        log('[DEBUG] 调试输出结束\n', 'cyan');
       }
 
       // Filter by activity type if needed
@@ -246,6 +354,16 @@ class GarminSync {
     activityData.activity_id = activityId;
     activityData.name = activityName;
     activityData.activity_type = activityMeta.activityType?.typeKey || 'running';
+
+    // FIT 常不区分子类型（多为 generic），用 API/名称/GPS 推断 sub_sport_type（列表与详情接口均无 subType）
+    if (!activityData.sub_sport_type || activityData.sub_sport_type === '通用') {
+      const fromApi = inferSubSportFromApi(activityMeta);
+      const fromName = inferSubSportFromName(activityName);
+      const fromGps = inferSubSportFromGpsAndElevation(activityMeta);
+      if (fromApi) activityData.sub_sport_type = fromApi;
+      else if (fromName) activityData.sub_sport_type = fromName;
+      else if (fromGps) activityData.sub_sport_type = fromGps;
+    }
 
     // Calculate VDOT if possible
     if (this.vdotCalculator && activityData.average_heart_rate) {

@@ -29,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
       >
-        <header className="sticky top-0 z-10 flex flex-col bg-emerald-800">
+        <header className="sticky top-0 z-50 flex flex-col bg-emerald-800">
           {/* 标题栏：深绿底、白字，标题居中 */}
           <div className="mx-auto flex w-full max-w-5xl justify-center px-4 py-3">
             <Link

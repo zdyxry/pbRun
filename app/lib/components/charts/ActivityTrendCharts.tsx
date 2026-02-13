@@ -6,8 +6,6 @@ import type { ActivityRecord } from '@/app/lib/types';
 
 interface ActivityTrendChartsProps {
   records: ActivityRecord[];
-  /** 为 true 时不渲染区块标题（由父级卡片提供） */
-  hideTitle?: boolean;
 }
 
 function formatElapsed(sec: number): string {
@@ -32,13 +30,27 @@ function filterOutliersWithForwardFill(
   });
 }
 
-// 合理范围：心率 40–220 bpm，步频 100–220 步/分，步幅 30–180 cm
+// 合理范围：心率 40–220 bpm，步频 100–220 步/分，步幅 30–180 cm，配速 3:00–15:00 /km
 const HR_MIN = 40;
 const HR_MAX = 220;
 const CADENCE_MIN = 100;
 const CADENCE_MAX = 220;
 const STRIDE_CM_MIN = 30;
 const STRIDE_CM_MAX = 180;
+const PACE_MIN_SEC = 180;   // 3:00 /km
+const PACE_MAX_SEC = 900;   // 15:00 /km
+
+const FIVE_MIN_SEC = 300;
+
+/** 趋势图统一配色，与页面 zinc 中性风格协调 */
+const TREND_CHART_COLOR = '#52525b'; // zinc-600，与 text-zinc-600 一致
+
+/** 配速秒/公里 → M:SS 显示 */
+function formatPaceForAxis(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 function buildLineChart(
   chartRef: HTMLDivElement,
@@ -52,6 +64,8 @@ function buildLineChart(
   const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
+      confine: true,
+      appendToBody: false,
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : null;
         if (!p) return '';
@@ -64,7 +78,16 @@ function buildLineChart(
     xAxis: {
       type: 'category',
       data: xData.map((s) => formatElapsed(s)),
-      axisLabel: { fontSize: 10, rotate: 45 },
+      axisLabel: {
+        fontSize: 10,
+        rotate: 45,
+        interval: (index: number) => {
+          if (index === 0) return true;
+          const curr = xData[index];
+          const prev = xData[index - 1];
+          return Math.floor(curr / FIVE_MIN_SEC) > Math.floor(prev / FIVE_MIN_SEC);
+        },
+      },
       boundaryGap: true,
     },
     yAxis: {
@@ -79,7 +102,7 @@ function buildLineChart(
         smooth: true,
         symbol: 'none',
         lineStyle: { width: 2, color },
-        areaStyle: { opacity: 0.15, color },
+        areaStyle: { opacity: 0.12, color },
       },
     ],
   };
@@ -92,10 +115,71 @@ function buildLineChart(
   };
 }
 
-export default function ActivityTrendCharts({ records, hideTitle }: ActivityTrendChartsProps) {
+function buildPaceChart(chartRef: HTMLDivElement, xData: number[], paceData: (number | null)[]) {
+  const chart = echarts.init(chartRef);
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      confine: true,
+      appendToBody: false,
+      formatter: (params: unknown) => {
+        const p = Array.isArray(params) ? params[0] : null;
+        if (!p) return '';
+        const axisValue = (p as { axisValue?: string }).axisValue ?? '';
+        const value = (p as { value?: number | null }).value;
+        const paceStr = value != null ? formatPaceForAxis(value) + ' /km' : '--';
+        return `<b>${axisValue}</b><br/>配速: ${paceStr}`;
+      },
+    },
+    grid: { left: 0, right: 0, bottom: 0, top: 10, containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: xData.map((s) => formatElapsed(s)),
+      axisLabel: {
+        fontSize: 10,
+        rotate: 45,
+        interval: (index: number) => {
+          if (index === 0) return true;
+          const curr = xData[index];
+          const prev = xData[index - 1];
+          return Math.floor(curr / FIVE_MIN_SEC) > Math.floor(prev / FIVE_MIN_SEC);
+        },
+      },
+      boundaryGap: true,
+    },
+    yAxis: {
+      type: 'value',
+      name: '配速',
+      min: 0,
+      axisLabel: {
+        formatter: (v: number) => formatPaceForAxis(v),
+      },
+    },
+    series: [
+      {
+        type: 'line',
+        data: paceData,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { width: 2, color: TREND_CHART_COLOR },
+        areaStyle: { opacity: 0.12, color: TREND_CHART_COLOR },
+      },
+    ],
+  };
+  chart.setOption(option);
+  const handleResize = () => chart.resize();
+  window.addEventListener('resize', handleResize);
+  return () => {
+    window.removeEventListener('resize', handleResize);
+    chart.dispose();
+  };
+}
+
+export default function ActivityTrendCharts({ records }: ActivityTrendChartsProps) {
   const hrRef = useRef<HTMLDivElement>(null);
   const cadenceRef = useRef<HTMLDivElement>(null);
   const strideRef = useRef<HTMLDivElement>(null);
+  const paceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!records.length) return;
@@ -105,6 +189,17 @@ export default function ActivityTrendCharts({ records, hideTitle }: ActivityTren
     const cadenceRaw = records.map((r) => r.cadence ?? null);
     const strideRaw = records.map((r) => (r.step_length != null ? r.step_length * 100 : null));
 
+    // 配速：优先用同步写入的 pace 字段，否则由步频与步幅推导
+    const paceRaw: (number | null)[] = records.map((r) => {
+      if (r.pace != null && r.pace >= PACE_MIN_SEC && r.pace <= PACE_MAX_SEC) return r.pace;
+      const cadence = r.cadence ?? 0;
+      const stepLength = r.step_length ?? 0;
+      if (cadence <= 0 || stepLength <= 0) return null;
+      const secPerKm = 60000 / (cadence * stepLength);
+      return secPerKm;
+    });
+    const paceData = filterOutliersWithForwardFill(paceRaw, PACE_MIN_SEC, PACE_MAX_SEC);
+
     const hrData = filterOutliersWithForwardFill(hrRaw, HR_MIN, HR_MAX);
     const cadenceData = filterOutliersWithForwardFill(cadenceRaw, CADENCE_MIN, CADENCE_MAX);
     const strideData = filterOutliersWithForwardFill(strideRaw, STRIDE_CM_MIN, STRIDE_CM_MAX);
@@ -113,18 +208,21 @@ export default function ActivityTrendCharts({ records, hideTitle }: ActivityTren
 
     if (hrRef.current && hrData.some((v) => v != null)) {
       cleanups.push(
-        buildLineChart(hrRef.current, xData, hrData, '心率', ' bpm', '#ef4444')
+        buildLineChart(hrRef.current, xData, hrData, '心率', ' bpm', TREND_CHART_COLOR)
       );
     }
     if (cadenceRef.current && cadenceData.some((v) => v != null)) {
       cleanups.push(
-        buildLineChart(cadenceRef.current, xData, cadenceData, '步频', ' 步/分', '#3b82f6')
+        buildLineChart(cadenceRef.current, xData, cadenceData, '步频', ' 步/分', TREND_CHART_COLOR)
       );
     }
     if (strideRef.current && strideData.some((v) => v != null)) {
       cleanups.push(
-        buildLineChart(strideRef.current, xData, strideData, '步幅', ' cm', '#10b981')
+        buildLineChart(strideRef.current, xData, strideData, '步幅', ' cm', TREND_CHART_COLOR)
       );
+    }
+    if (paceRef.current && paceData.some((v) => v != null)) {
+      cleanups.push(buildPaceChart(paceRef.current, xData, paceData));
     }
 
     return () => {
@@ -135,35 +233,42 @@ export default function ActivityTrendCharts({ records, hideTitle }: ActivityTren
   const hasHr = records.some((r) => r.heart_rate != null);
   const hasCadence = records.some((r) => r.cadence != null);
   const hasStride = records.some((r) => r.step_length != null);
+  const hasPace = records.some(
+    (r) =>
+      (r.pace != null && r.pace > 0) ||
+      (r.cadence != null && r.cadence > 0 && r.step_length != null && r.step_length > 0)
+  );
 
-  if (!hasHr && !hasCadence && !hasStride) {
+  if (!hasHr && !hasCadence && !hasStride && !hasPace) {
     return null;
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {!hideTitle && (
-        <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
-          心率 / 步频 / 步幅趋势
-        </h2>
+    <>
+      {hasHr && (
+        <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-2 text-base font-medium text-zinc-800 dark:text-zinc-200">心率趋势</h2>
+          <div ref={hrRef} style={{ width: '100%', height: '200px', position: 'relative', zIndex: 0 }} />
+        </section>
       )}
-      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-3">
-        {hasHr && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-900">
-            <div ref={hrRef} style={{ width: '100%', height: '110px' }} />
-          </div>
-        )}
-        {hasCadence && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-900">
-            <div ref={cadenceRef} style={{ width: '100%', height: '110px' }} />
-          </div>
-        )}
-        {hasStride && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-900">
-            <div ref={strideRef} style={{ width: '100%', height: '110px' }} />
-          </div>
-        )}
-      </div>
-    </div>
+      {hasPace && (
+        <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-2 text-base font-medium text-zinc-800 dark:text-zinc-200">配速趋势</h2>
+          <div ref={paceRef} style={{ width: '100%', height: '200px', position: 'relative', zIndex: 0 }} />
+        </section>
+      )}
+      {hasCadence && (
+        <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-2 text-base font-medium text-zinc-800 dark:text-zinc-200">步频趋势</h2>
+          <div ref={cadenceRef} style={{ width: '100%', height: '200px', position: 'relative', zIndex: 0 }} />
+        </section>
+      )}
+      {hasStride && (
+        <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-2 text-base font-medium text-zinc-800 dark:text-zinc-200">步幅趋势</h2>
+          <div ref={strideRef} style={{ width: '100%', height: '200px', position: 'relative', zIndex: 0 }} />
+        </section>
+      )}
+    </>
   );
 }
