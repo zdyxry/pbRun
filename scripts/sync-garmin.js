@@ -283,9 +283,12 @@ class GarminSync {
         log('[DEBUG] 调试输出结束\n', 'cyan');
       }
 
-      // Filter by activity type if needed
+      // Filter by activity type if needed（running + treadmill_running 均算跑步里程）
       const filtered = this.onlyRunning
-        ? activities.filter(act => act.activityType?.typeKey === 'running')
+        ? activities.filter(act => {
+            const key = act.activityType?.typeKey || '';
+            return key === 'running' || key === 'treadmill_running';
+          })
         : activities;
 
       allActivities.push(...filtered);
@@ -343,8 +346,14 @@ class GarminSync {
       return { success: false };
     }
 
-    // 过滤没有心率的数据（不同步）
-    const hasHeartRate = activityData.average_heart_rate != null && Number(activityData.average_heart_rate) > 0;
+    // 无心率则跳过：VDOT、训练负荷、心率区间等均依赖心率，无心率活动不同步以保证统计口径一致。
+    // 判定：session 的 avg_heart_rate 或 max_heart_rate > 0，或 records 中任一条有 heart_rate > 0（部分 FIT 仅 record 有心率）
+    const sessionAvgHr = activityData.average_heart_rate != null ? Number(activityData.average_heart_rate) : null;
+    const sessionMaxHr = activityData.max_heart_rate != null ? Number(activityData.max_heart_rate) : null;
+    const hasHrInRecords = Array.isArray(recordsData) && recordsData.some(r => r.heart_rate != null && Number(r.heart_rate) > 0);
+    const hasHeartRate = (sessionAvgHr != null && sessionAvgHr > 0) ||
+      (sessionMaxHr != null && sessionMaxHr > 0) ||
+      hasHrInRecords;
     if (!hasHeartRate) {
       await fs.unlink(fitFilePath).catch(() => {});
       return { success: false, skipped: true, reason: 'no_heart_rate' };
