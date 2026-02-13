@@ -741,7 +741,9 @@ function getVDOTTrendFromCache(params: VDOTTrendParams): VDOTTrendPoint[] {
 
   query += ' ORDER BY period';
 
-  return db.prepare(query).all(...queryParams) as VDOTTrendPoint[];
+  const rows = db.prepare(query).all(...queryParams) as VDOTTrendPoint[];
+  // 缓存与 activities 中 distance 均为公里，接口约定 total_distance 为米
+  return rows.map((r) => ({ ...r, total_distance: (r.total_distance ?? 0) * 1000 }));
 }
 
 /**
@@ -814,7 +816,8 @@ function getVDOTTrendRealtime(params: VDOTTrendParams): VDOTTrendPoint[] {
 
     const trend = trendsMap.get(period)!;
     trend.activity_count += 1;
-    trend.total_distance += activity.distance || 0;
+    // activities.distance 为公里，VDOTTrendPoint.total_distance 约定为米
+    trend.total_distance += (activity.distance ?? 0) * 1000;
     trend.total_duration += activity.duration || 0;
 
     // Update VDOT stats
