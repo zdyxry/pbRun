@@ -33,6 +33,7 @@ export default function VDOTTrendChart({ data, groupBy }: VDOTTrendChartProps) {
         confine: true,
         appendToBody: false,
         position: (point, _params, dom, rect, size) => {
+          if (!rect) return point;
           const [tw, th] = size.contentSize;
           const padding = 10;
           let x = point[0];

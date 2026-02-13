@@ -8,7 +8,11 @@ on:
     - cron: '0 0 * * *'        # 每日 UTC 00:00
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '22'
+
+# 必须显式声明，否则 GITHUB_TOKEN 默认只有读权限，无法 push
+permissions:
+  contents: write
 
 jobs:
   sync:
@@ -60,8 +64,8 @@ jobs:
 
       - name: Commit and push
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add app/data/activities.db
           git diff --staged --quiet || git commit -m "chore: update garmin data $(date +%Y-%m-%d)"
           git push
