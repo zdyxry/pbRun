@@ -48,13 +48,7 @@ export default function VDOTTrendChart({ data, groupBy }: VDOTTrendChartProps) {
           if (!p) return '';
           const period = (p as { axisValue?: string }).axisValue ?? '';
           const value = (p as { value?: string }).value ?? '';
-          const point = data.find(d => d.period === period);
-          let tip = `<b>${period}</b><br/>平均 VDOT: ${value}`;
-          if (point) {
-            tip += `<br/>活动次数: ${point.activity_count}`;
-            tip += `<br/>总距离: ${(point.total_distance / 1000).toFixed(1)} km`;
-          }
-          return tip;
+          return `<b>${period}</b><br/>平均 VDOT: ${value}`;
         },
       },
       grid: {
