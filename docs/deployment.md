@@ -25,12 +25,12 @@
 
 ### 2. 获取 Garmin 认证 Token
 
-在本地运行以下命令获取认证 Token：
+请先完成下方「Vercel 部署」中的 [Fork 仓库](#1-fork-仓库)，再在本地克隆**你 Fork 的仓库**（不要直接 clone 上游），然后获取 Token：
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/garmin_data.git
-cd garmin_data
+# 将 YOUR_USERNAME 替换为你的 GitHub 用户名
+git clone git@github.com:YOUR_USERNAME/pbRun.git
+cd pbRun
 
 # 安装依赖
 npm install
@@ -78,9 +78,9 @@ RESTING_HR=55     # 清晨静息心率
 
 ### 方式一：通过 Vercel 控制台部署 (推荐)
 
-#### 1. Fork 仓库
+#### 1. Fork 仓库（必做第一步）
 
-访问项目仓库，点击右上角 **Fork** 按钮，将仓库 Fork 到你的 GitHub 账号。
+访问 [项目仓库](https://github.com/xuandao/pbRun)，点击右上角 **Fork** 按钮，将仓库 Fork 到你的 GitHub 账号。后续所有操作（配置 Secrets、Vercel 导入、本地开发等）均基于你 Fork 的仓库，不要直接使用上游仓库。
 
 #### 2. 登录 Vercel
 
@@ -89,7 +89,7 @@ RESTING_HR=55     # 清晨静息心率
 #### 3. 导入项目
 
 1. 点击 **Add New** > **Project**
-2. 选择你 Fork 的 `garmin_data` 仓库
+2. 选择你 Fork 的 `pbRun` 仓库
 3. 点击 **Import**
 
 #### 4. 配置项目
@@ -375,4 +375,4 @@ schedule:
 
 ---
 
-如有其他问题，请在 [GitHub Issues](https://github.com/your-username/garmin_data/issues) 中提出。
+如有其他问题，请在 [GitHub Issues](https://github.com/xuandao/pbRun/issues) 中提出。

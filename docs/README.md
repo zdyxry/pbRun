@@ -68,7 +68,7 @@
 
 1. 查看 [常见问题](faq.md) 寻找解决方案
 2. 使用故障排查清单诊断问题
-3. 在 [GitHub Issues](https://github.com/your-username/garmin_data/issues) 提问
+3. 在 [GitHub Issues](https://github.com/xuandao/pbRun/issues) 提问
 
 ---
 
@@ -242,9 +242,9 @@ node scripts/db-manager.js --vacuum
 
 ### 社区资源
 
-- [GitHub Discussions](https://github.com/your-username/garmin_data/discussions) - 讨论和交流
-- [GitHub Issues](https://github.com/your-username/garmin_data/issues) - 问题反馈
-- [Changelog](https://github.com/your-username/garmin_data/releases) - 版本更新日志
+- [GitHub Discussions](https://github.com/xuandao/pbRun/discussions) - 讨论和交流
+- [GitHub Issues](https://github.com/xuandao/pbRun/issues) - 问题反馈
+- [Changelog](https://github.com/xuandao/pbRun/releases) - 版本更新日志
 
 ---
 
@@ -254,8 +254,8 @@ node scripts/db-manager.js --vacuum
 
 ### 如何贡献
 
-1. **报告 Bug**: 在 [Issues](https://github.com/your-username/garmin_data/issues) 中提交
-2. **建议新功能**: 在 [Discussions](https://github.com/your-username/garmin_data/discussions) 中讨论
+1. **报告 Bug**: 在 [Issues](https://github.com/xuandao/pbRun/issues) 中提交
+2. **建议新功能**: 在 [Discussions](https://github.com/xuandao/pbRun/discussions) 中讨论
 3. **提交代码**: 创建 Pull Request
 4. **改进文档**: 直接编辑 Markdown 文件
 
@@ -263,7 +263,7 @@ node scripts/db-manager.js --vacuum
 
 感谢所有为本项目做出贡献的开发者！
 
-查看完整的 [贡献者列表](https://github.com/your-username/garmin_data/graphs/contributors)。
+查看完整的 [贡献者列表](https://github.com/xuandao/pbRun/graphs/contributors)。
 
 ---
 
@@ -275,16 +275,16 @@ node scripts/db-manager.js --vacuum
 
 ## 联系方式
 
-- **GitHub**: [@your-username](https://github.com/your-username)
+- **GitHub**: [@xuandao](https://github.com/xuandao)
 - **Email**: your-email@example.com
-- **项目主页**: [GitHub](https://github.com/your-username/garmin_data)
+- **项目主页**: [GitHub](https://github.com/xuandao/pbRun)
 - **在线演示**: [Demo](https://your-demo.vercel.app)
 
 ---
 
 ## 更新日志
 
-查看 [Releases](https://github.com/your-username/garmin_data/releases) 了解最新更新。
+查看 [Releases](https://github.com/xuandao/pbRun/releases) 了解最新更新。
 
 ### 最近更新
 
@@ -296,4 +296,4 @@ node scripts/db-manager.js --vacuum
 
 ---
 
-如有任何问题或建议，欢迎在 [GitHub Issues](https://github.com/your-username/garmin_data/issues) 中反馈！
+如有任何问题或建议，欢迎在 [GitHub Issues](https://github.com/xuandao/pbRun/issues) 中反馈！

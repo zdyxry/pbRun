@@ -393,4 +393,4 @@ VDOT 只是衡量有氧能力的一个维度，还需要考虑：
 
 ---
 
-如有其他问题，请在 [GitHub Issues](https://github.com/your-username/garmin_data/issues) 中提出。
+如有其他问题，请在 [GitHub Issues](https://github.com/xuandao/pbRun/issues) 中提出。

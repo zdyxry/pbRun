@@ -453,4 +453,4 @@ const SPORT_FILTER = ['running', 'cycling', 'swimming'];
 
 ---
 
-如有其他问题，请在 [GitHub Issues](https://github.com/your-username/garmin_data/issues) 中提出。
+如有其他问题，请在 [GitHub Issues](https://github.com/xuandao/pbRun/issues) 中提出。

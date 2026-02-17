@@ -6,7 +6,7 @@
 
 <div align="center">
 
-[![GitHub License](https://img.shields.io/github/license/xuandao/garmin_data)](LICENSE)
+[![GitHub License](https://img.shields.io/github/license/xuandao/pbRun)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black)](https://vercel.com)
 
@@ -123,11 +123,14 @@
 - GitHub 账号
 - Vercel 账号 (可选，用于部署)
 
-### 1. 克隆仓库
+### 1. Fork 并克隆你的仓库
+
+请先 [Fork 本仓库](https://github.com/xuandao/pbRun) 到你的 GitHub 账号，然后克隆**你 Fork 后的仓库**（不要直接 clone 上游仓库）：
 
 ```bash
-git clone https://github.com/your-username/garmin_data.git
-cd garmin_data
+# 将 YOUR_USERNAME 替换为你的 GitHub 用户名
+git clone git@github.com:YOUR_USERNAME/pbRun.git
+cd pbRun
 npm install
 ```
 
@@ -194,7 +197,7 @@ npm run dev
 
 ### 快速部署步骤
 
-1. **Fork 本仓库** 到你的 GitHub 账号
+1. **Fork 本仓库** 到你的 GitHub 账号（[点击 Fork](https://github.com/xuandao/pbRun)）。后续操作都在你 Fork 的仓库中进行，不要直接在上游仓库改配置。
 
 2. **配置 GitHub Secrets**
    - 进入仓库 Settings > Secrets > Actions
@@ -278,10 +281,12 @@ garmin_data/
 
 ### 开发指南
 
+请先 [Fork 本仓库](https://github.com/xuandao/pbRun)，再克隆**你 Fork 的仓库**到本地：
+
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/garmin_data.git
-cd garmin_data
+# 将 YOUR_USERNAME 替换为你的 GitHub 用户名
+git clone git@github.com:YOUR_USERNAME/pbRun.git
+cd pbRun
 
 # 安装依赖（macOS 若遇 better-sqlite3 编译错误，改用：SDKROOT=$(xcrun --sdk macosx --show-sdk-path) npm install）
 npm install
