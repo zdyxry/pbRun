@@ -259,6 +259,10 @@ node scripts/db-manager.js --vacuum
 3. **提交代码**: 创建 Pull Request
 4. **改进文档**: 直接编辑 Markdown 文件
 
+### 参考与致谢
+
+本项目实现参考了 [yihong0618/running_page](https://github.com/yihong0618/running_page)（Make your own running home page），特此致谢。
+
 ### 贡献者
 
 感谢所有为本项目做出贡献的开发者！

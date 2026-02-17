@@ -310,6 +310,7 @@ node scripts/validate-data.js
 
 ## 致谢
 
+- [yihong0618/running_page](https://github.com/yihong0618/running_page) - 本项目实现参考该开源项目（Make your own running home page）
 - [Jack Daniels' Running Formula](https://www.amazon.com/Daniels-Running-Formula-Jack-Tupper/dp/1450431836) - VDOT 理论基础
 - [Garmin Connect](https://connect.garmin.com/) - 数据来源
 - [Next.js](https://nextjs.org/) - Web 框架
