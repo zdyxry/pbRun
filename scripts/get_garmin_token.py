@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["garth>=0.5.0"]
+# ///
 """Helper script to get Garmin authentication token."""
 
 import os
