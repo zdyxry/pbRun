@@ -167,13 +167,23 @@ VDOT (V̇O2max) 是由 Jack Daniels 提出的跑力指标，基于跑步成绩�
 
 ### 1. 获取 Garmin Token
 
-运行以下命令获取认证 Token：
+**（可选）在 .env 中配置 Garmin 账号密码**，便于非交互获取 Token；不配置则运行脚本时会提示输入。
+
+在项目根创建或编辑 `.env`，可先填写：
+
+```bash
+# Garmin 账号密码（供 get_garmin_token.py 使用）
+GARMIN_EMAIL=your_garmin_email@example.com
+GARMIN_PASSWORD=your_garmin_password
+```
+
+然后运行：
 
 ```bash
 python3 scripts/get_garmin_token.py
 ```
 
-脚本会从 .env 读取 `GARMIN_EMAIL`/`GARMIN_PASSWORD`（未配置时按提示输入），并输出 `GARMIN_SECRET_STRING`。
+脚本会从 .env 读取 `GARMIN_EMAIL` / `GARMIN_PASSWORD`（未配置时按提示输入），并输出 `GARMIN_SECRET_STRING`。
 
 **原理**:
 
@@ -183,10 +193,14 @@ python3 scripts/get_garmin_token.py
 
 ### 2. 配置环境变量
 
-创建 `.env` 文件：
+在 `.env` 中配置（含上一步获取的 Token）：
 
 ```bash
-# Garmin 认证
+# Garmin 账号密码（供重新获取 Token 时使用）
+GARMIN_EMAIL=your_garmin_email@example.com
+GARMIN_PASSWORD=your_garmin_password
+
+# Garmin 认证 Token（由上一步脚本输出）
 GARMIN_SECRET_STRING="eyJhbGci...很长的字符串"
 
 # 心率参数
@@ -198,9 +212,11 @@ RESTING_HR=55     # 静息心率
 
 在 GitHub 仓库的 **Settings > Secrets > Actions** 中添加：
 
-- `GARMIN_SECRET_STRING`
-- `MAX_HR`
-- `RESTING_HR`
+- `GARMIN_EMAIL` — Garmin 登录邮箱（用于重新获取 Token 等）
+- `GARMIN_PASSWORD` — Garmin 登录密码（用于重新获取 Token 等）
+- `GARMIN_SECRET_STRING` — 上一步脚本输出的 Token，同步数据时使用
+- `MAX_HR` — 最大心率（可选）
+- `RESTING_HR` — 静息心率（可选）
 
 ---
 

@@ -138,17 +138,32 @@ npm install
 
 ### 2. 配置 Garmin 认证
 
+**先创建 `.env` 并填写 Garmin 账号密码**（用于获取 Token，非交互式；也可不填，运行脚本时按提示输入）：
+
 ```bash
-# 获取 Garmin 认证 Token（会从 .env 读取 GARMIN_EMAIL/GARMIN_PASSWORD，未配置时按提示输入）
+# 在项目根目录创建 .env，至少包含（获取 Token 时使用）：
+GARMIN_EMAIL=your_garmin_email@example.com
+GARMIN_PASSWORD=your_garmin_password
+```
+
+然后运行脚本获取 Token：
+
+```bash
 python3 scripts/get_garmin_token.py
 ```
 
+脚本会从 .env 读取 `GARMIN_EMAIL` / `GARMIN_PASSWORD`，未配置时会提示输入。将输出的 **GARMIN_SECRET_STRING** 填入下面 .env 中。
+
 ### 3. 配置环境变量
 
-创建 `.env` 文件:
+在 `.env` 中补充/保留以下变量：
 
 ```bash
-# Garmin 认证 (从上一步获取)
+# Garmin 账号（供 get_garmin_token.py 使用，重新获取 Token 时无需再输入）
+GARMIN_EMAIL=your_garmin_email@example.com
+GARMIN_PASSWORD=your_garmin_password
+
+# Garmin 认证 Token（由上一步脚本输出，用于同步数据）
 GARMIN_SECRET_STRING="your_token_here"
 
 # 个人心率参数 (用于计算心率区间和 VDOT)
@@ -184,9 +199,11 @@ npm run dev
 2. **配置 GitHub Secrets**
    - 进入仓库 Settings > Secrets > Actions
    - 添加以下 Secrets:
-     - `GARMIN_SECRET_STRING`
-     - `MAX_HR`
-     - `RESTING_HR`
+     - `GARMIN_EMAIL` — Garmin 登录邮箱（用于重新获取 Token 等）
+     - `GARMIN_PASSWORD` — Garmin 登录密码（用于重新获取 Token 等）
+     - `GARMIN_SECRET_STRING` — 运行 `python3 scripts/get_garmin_token.py` 得到的 Token，同步数据时使用
+     - `MAX_HR` — 最大心率（可选）
+     - `RESTING_HR` — 静息心率（可选）
 
 3. **连接 Vercel**
    - 登录 [Vercel](https://vercel.com)

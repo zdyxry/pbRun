@@ -35,20 +35,23 @@ cd garmin_data
 # 安装依赖
 npm install
 
-# 获取 Token（会从 .env 读取 GARMIN_EMAIL/GARMIN_PASSWORD，未配置时按提示输入）
+# 可选：先在项目根 .env 中配置 Garmin 账号密码，便于非交互获取 Token
+# GARMIN_EMAIL=your_email@example.com
+# GARMIN_PASSWORD=your_password
+
 python3 scripts/get_garmin_token.py
 ```
 
-按提示输入你的 Garmin 用户名和密码（或先在 .env 中配置），脚本会输出 `GARMIN_SECRET_STRING`。
+脚本会从 .env 读取 `GARMIN_EMAIL` / `GARMIN_PASSWORD`（未配置时按提示输入），并输出 `GARMIN_SECRET_STRING`。
 
 示例输出：
 
 ```
-请输入 Garmin 用户名: your-email@example.com
-请输入 Garmin 密码: ********
+Enter your Garmin email address: your-email@example.com
+Enter your Garmin password: ********
 
-✅ 认证成功！
-✅ GARMIN_SECRET_STRING: eyJhbGci...很长的字符串
+✓ Successfully authenticated with Garmin
+Your Garmin Secret String: ...
 
 请将此 Token 添加到 GitHub Secrets 和 .env 文件中
 ```
@@ -141,14 +144,18 @@ GitHub Actions 用于每日自动同步 Garmin 数据。
 
 | Secret 名称 | 值 | 说明 |
 |------------|-----|------|
-| `GARMIN_SECRET_STRING` | 从上一步获取的 Token | Garmin 认证 Token |
-| `MAX_HR` | 例如 `190` | 最大心率 |
-| `RESTING_HR` | 例如 `55` | 静息心率 |
+| `GARMIN_EMAIL` | 你的 Garmin 登录邮箱 | 用于重新获取 Token 等 |
+| `GARMIN_PASSWORD` | 你的 Garmin 登录密码 | 用于重新获取 Token 等 |
+| `GARMIN_SECRET_STRING` | 从上一步获取的 Token | Garmin 认证 Token，同步数据时使用 |
+| `MAX_HR` | 例如 `190` | 最大心率（可选） |
+| `RESTING_HR` | 例如 `55` | 静息心率（可选） |
 
 配置完成后如下图所示：
 
 ```
 Repository secrets
+• GARMIN_EMAIL
+• GARMIN_PASSWORD
 • GARMIN_SECRET_STRING
 • MAX_HR
 • RESTING_HR
@@ -180,7 +187,7 @@ Repository secrets
 
 GitHub Actions 配置了以下触发条件：
 
-- **每日自动同步**: UTC 00:00 (北京时间 08:00)
+- **定时自动同步**: 每 8 小时 (UTC 00:00、08:00、16:00，对应北京时间 08:00、16:00、次日 00:00)
 - **手动触发**: 在 Actions 页面手动运行
 - **代码推送**: 推送到 main 分支时 (排除仅 DB 变更)
 - **Webhook 触发**: 通过 API 触发 (可用于其他自动化场景)
@@ -225,7 +232,11 @@ GitHub Actions 配置了以下触发条件：
 创建 `.env` 文件（不要提交到 Git）：
 
 ```bash
-# Garmin 认证
+# Garmin 账号密码（供 get_garmin_token.py 获取/刷新 Token 时使用）
+GARMIN_EMAIL=your_email@example.com
+GARMIN_PASSWORD=your_password
+
+# Garmin 认证 Token（运行 python3 scripts/get_garmin_token.py 获得）
 GARMIN_SECRET_STRING="your_token_here"
 
 # 心率参数
